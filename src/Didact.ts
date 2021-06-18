@@ -19,6 +19,8 @@ export type IFiber = {
   parent?: IFiber;
   sibling?: IFiber;
   child?: IFiber;
+  alternate?: IFiber;
+  effectTag?: "UPDATE" | "PLACEMENT" | "DELETION";
 };
 
 const Didact = {

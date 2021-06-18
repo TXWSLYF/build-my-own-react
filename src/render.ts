@@ -1,7 +1,9 @@
 import { DidactElement, IFiber } from "./Didact";
 
-let nextFiber: IFiber = null;
-let rootFiber: IFiber = null;
+let nextUnitOfWork: IFiber = null;
+let currentRoot: IFiber = null;
+let wipRoot: IFiber = null;
+let deletions: IFiber[] = null;
 
 function createDom(fiber: IFiber) {
   // 根据 fiber 类型创建对应 dom 节点
@@ -11,36 +13,34 @@ function createDom(fiber: IFiber) {
       : document.createElement(fiber.type);
 
   // 添加属性
-  Object.keys(fiber.props)
-    .filter((key) => key !== "children")
-    .forEach((propKey) => {
-      dom[propKey] = fiber.props[propKey];
-    });
+  updateDom(dom, {}, fiber.props);
 
   return dom;
 }
 
 // 启动
 export const render = (element: DidactElement, root: HTMLElement) => {
-  rootFiber = {
+  wipRoot = {
     dom: root,
     props: {
       children: [element],
     },
+    alternate: currentRoot,
   } as IFiber;
 
-  nextFiber = rootFiber;
+  deletions = [];
+  nextUnitOfWork = wipRoot;
 };
 
 function workLoop(deadline) {
   let shouldYield = false;
 
-  while (nextFiber && !shouldYield) {
-    nextFiber = performUnitOfWork(nextFiber);
+  while (nextUnitOfWork && !shouldYield) {
+    nextUnitOfWork = performUnitOfWork(nextUnitOfWork);
     shouldYield = deadline.timeRemaining() < 1;
   }
 
-  if (!nextFiber && rootFiber) {
+  if (!nextUnitOfWork && wipRoot) {
     commitRoot();
   }
 
@@ -50,17 +50,46 @@ function workLoop(deadline) {
 requestIdleCallback(workLoop);
 
 function commitRoot() {
-  commitWork(rootFiber.child);
-  rootFiber = null;
+  deletions.forEach(commitWork);
+  commitWork(wipRoot.child);
+  currentRoot = wipRoot;
+  wipRoot = null;
 }
 
 function commitWork(fiber: IFiber) {
   if (!fiber) return;
 
   const domParent = fiber.parent.dom;
-  domParent.appendChild(fiber.dom);
+  if (fiber.effectTag === "PLACEMENT" && fiber.dom != null) {
+    domParent.appendChild(fiber.dom);
+  } else if (fiber.effectTag === "DELETION") {
+    domParent.removeChild(fiber.dom);
+  } else if (fiber.effectTag === "UPDATE" && fiber.dom !== null) {
+    updateDom(fiber.dom, fiber.alternate.props, fiber.props);
+  }
+
   commitWork(fiber.child);
   commitWork(fiber.sibling);
+}
+
+const isProperty = (key) => key !== "children";
+const isNew = (prev, next) => (key) => prev[key] !== next[key];
+const isGone = (prev, next) => (key) => !(key in next);
+function updateDom(dom, prevProps, nextProps) {
+  // Remove old properties
+  Object.keys(prevProps)
+    .filter(isProperty)
+    .filter(isGone(prevProps, nextProps))
+    .forEach((name) => {
+      dom[name] = "";
+    });
+  // Set new or changed properties
+  Object.keys(nextProps)
+    .filter(isProperty)
+    .filter(isNew(prevProps, nextProps))
+    .forEach((name) => {
+      dom[name] = nextProps[name];
+    });
 }
 
 function performUnitOfWork(fiber: IFiber) {
@@ -68,29 +97,7 @@ function performUnitOfWork(fiber: IFiber) {
     fiber.dom = createDom(fiber);
   }
 
-  const elements = fiber.props.children;
-  let index = 0;
-  let prevSibling: IFiber = null;
-
-  while (index < elements.length) {
-    const element = elements[index];
-
-    const newFiber: IFiber = {
-      type: element.type,
-      props: element.props,
-      parent: fiber,
-      dom: null,
-    };
-
-    if (index === 0) {
-      fiber.child = newFiber;
-    } else {
-      prevSibling.sibling = newFiber;
-    }
-
-    prevSibling = newFiber;
-    index++;
-  }
+  reconcileChildren(fiber, fiber.props.children);
 
   if (fiber.child) return fiber.child;
 
@@ -101,5 +108,61 @@ function performUnitOfWork(fiber: IFiber) {
     }
 
     nextFiber = nextFiber.parent;
+  }
+}
+
+function reconcileChildren(wipFiber: IFiber, elements: DidactElement[]) {
+  let index = 0;
+  let oldFiber = wipFiber.alternate && wipFiber.alternate.child;
+  let prevSibling: IFiber = null;
+
+  while (index < elements.length || oldFiber) {
+    const element = elements[index];
+    let newFiber: IFiber = null;
+
+    const sameType = oldFiber && element && element.type === oldFiber.type;
+
+    // 更新
+    if (sameType) {
+      newFiber = {
+        type: oldFiber.type,
+        props: element.props,
+        dom: oldFiber.dom,
+        parent: wipFiber,
+        alternate: oldFiber,
+        effectTag: "UPDATE",
+      };
+    }
+
+    // 新增
+    if (element && !sameType) {
+      newFiber = {
+        type: element.type,
+        props: element.props,
+        dom: null,
+        parent: wipFiber,
+        alternate: null,
+        effectTag: "PLACEMENT",
+      };
+    }
+
+    // 删除
+    if (oldFiber && !sameType) {
+      oldFiber.effectTag = "DELETION";
+      deletions.push(oldFiber);
+    }
+
+    if (oldFiber) {
+      oldFiber = oldFiber.sibling;
+    }
+
+    if (index === 0) {
+      wipFiber.child = newFiber;
+    } else if (element) {
+      prevSibling.sibling = newFiber;
+    }
+
+    prevSibling = newFiber;
+    index++;
   }
 }
