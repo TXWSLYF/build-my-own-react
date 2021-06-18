@@ -10,7 +10,8 @@
     "declaration": true,
     "declarationDir": "dist/types/",
     "jsx": "react",
-    "jsxFactory": "Didact.createElement"
+    "jsxFactory": "Didact.createElement",
+    "typeRoots": ["node_modules/@types"]
   },
   "exclude": ["node_modules", "dist"],
   "include": ["src"]

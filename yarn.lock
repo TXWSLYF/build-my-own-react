@@ -51,6 +51,11 @@
     "@types/scheduler" "*"
     csstype "^3.0.2"
 
+"@types/requestidlecallback@^0.3.1":
+  version "0.3.1"
+  resolved "http://192.168.14.11:8888/@types%2frequestidlecallback/-/requestidlecallback-0.3.1.tgz#34bb89753b1cdc72d0547522527b1cb0f02b5ec4"
+  integrity sha512-BnnRkgWYijCIndUn+LgoqKHX/hNpJC5G03B9y7mZya/C2gUQTSn75fEj3ZP1/Rl2E6EYeXh2/7/8UNEZ4X7HuQ==
+
 "@types/scheduler@*":
   version "0.16.1"
   resolved "http://192.168.14.11:8888/@types%2fscheduler/-/scheduler-0.16.1.tgz#18845205e86ff0038517aab7a18a62a6b9f71275"
