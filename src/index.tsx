@@ -1,7 +1,11 @@
 import Didact from "./Didact";
 
 const element1 = (
-  <div>
+  <div
+    onClick={(e) => {
+      console.log(e);
+    }}
+  >
     {/* TODO:支持 style */}
     <h1 className="111" title="1">
       haha
@@ -25,11 +29,12 @@ const Clock = ({ count }) => {
 
 const app = document.getElementById("app");
 if (app) {
-  let count = 0;
-  Didact.render(<Clock count={count}></Clock>, app);
+  // let count = 0;
+  // Didact.render(<Clock count={count}></Clock>, app);
+  // setInterval(() => {
+  //   count++;
+  //   Didact.render(<Clock count={count}></Clock>, app);
+  // }, 1000);
 
-  setInterval(() => {
-    count++;
-    Didact.render(<Clock count={count}></Clock>, app);
-  }, 1000);
+  Didact.render(element1, app);
 }
