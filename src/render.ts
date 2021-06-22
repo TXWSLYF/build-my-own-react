@@ -10,7 +10,7 @@ function createDom(fiber: IFiber) {
   const dom =
     fiber.type == "TEXT_ELEMENT"
       ? document.createTextNode("")
-      : document.createElement(fiber.type);
+      : document.createElement(fiber.type as string);
 
   // 添加属性
   updateDom(dom, {}, fiber.props);
@@ -59,11 +59,17 @@ function commitRoot() {
 function commitWork(fiber: IFiber) {
   if (!fiber) return;
 
-  const domParent = fiber.parent.dom;
+  let domParentFiber = fiber.parent;
+  while (!domParentFiber.dom) {
+    domParentFiber = domParentFiber.parent;
+  }
+  const domParent = domParentFiber.dom;
+
   if (fiber.effectTag === "PLACEMENT" && fiber.dom != null) {
     domParent.appendChild(fiber.dom);
   } else if (fiber.effectTag === "DELETION") {
-    domParent.removeChild(fiber.dom);
+    commitDeletion(fiber, domParent);
+    return;
   } else if (fiber.effectTag === "UPDATE" && fiber.dom !== null) {
     updateDom(fiber.dom, fiber.alternate.props, fiber.props);
   }
@@ -72,6 +78,13 @@ function commitWork(fiber: IFiber) {
   commitWork(fiber.sibling);
 }
 
+function commitDeletion(fiber, domParent) {
+  if (fiber.dom) {
+    domParent.removeChild(fiber.dom);
+  } else {
+    commitDeletion(fiber.child, domParent);
+  }
+}
 const isProperty = (key) => key !== "children";
 const isNew = (prev, next) => (key) => prev[key] !== next[key];
 const isGone = (prev, next) => (key) => !(key in next);
@@ -92,12 +105,27 @@ function updateDom(dom, prevProps, nextProps) {
     });
 }
 
-function performUnitOfWork(fiber: IFiber) {
+function updateFunctionComponent(fiber) {
+  const children = [fiber.type(fiber.props)];
+
+  reconcileChildren(fiber, children);
+}
+
+function updateHostComponent(fiber: IFiber) {
   if (!fiber.dom) {
     fiber.dom = createDom(fiber);
   }
 
   reconcileChildren(fiber, fiber.props.children);
+}
+
+function performUnitOfWork(fiber: IFiber) {
+  const isFunctionComponent = fiber.type instanceof Function;
+  if (isFunctionComponent) {
+    updateFunctionComponent(fiber);
+  } else {
+    updateHostComponent(fiber);
+  }
 
   if (fiber.child) return fiber.child;
 

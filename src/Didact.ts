@@ -10,7 +10,7 @@ export type DidactElement = {
 };
 
 export type IFiber = {
-  type: string;
+  type: string | Function;
   dom: HTMLElement | Text | null;
   props: {
     children: DidactElement[];

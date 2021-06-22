@@ -19,11 +19,17 @@ const element2 = (
   </div>
 );
 
+const Clock = ({ count }) => {
+  return <div>{count}</div>;
+};
+
 const app = document.getElementById("app");
 if (app) {
-  Didact.render(element1, app);
+  let count = 0;
+  Didact.render(<Clock count={count}></Clock>, app);
 
-  setTimeout(() => {
-    Didact.render(element2, app);
+  setInterval(() => {
+    count++;
+    Didact.render(<Clock count={count}></Clock>, app);
   }, 1000);
 }
