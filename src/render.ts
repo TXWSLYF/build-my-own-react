@@ -4,6 +4,8 @@ let nextUnitOfWork: IFiber = null;
 let currentRoot: IFiber = null;
 let wipRoot: IFiber = null;
 let deletions: IFiber[] = null;
+let wipFiber: IFiber = null;
+let hookIndex = null;
 
 function createDom(fiber: IFiber) {
   // 根据 fiber 类型创建对应 dom 节点
@@ -126,9 +128,45 @@ function updateDom(dom, prevProps, nextProps) {
 }
 
 function updateFunctionComponent(fiber) {
+  wipFiber = fiber;
+  hookIndex = 0;
+  wipFiber.hooks = [];
   const children = [fiber.type(fiber.props)];
 
   reconcileChildren(fiber, children);
+}
+
+export function useState(initial) {
+  const oldHook =
+    wipFiber.alternate &&
+    wipFiber.alternate.hooks &&
+    wipFiber.alternate.hooks[hookIndex];
+
+  const hook = {
+    state: oldHook ? oldHook.state : initial,
+    queue: [],
+  };
+
+  const actions = oldHook ? oldHook.queue : [];
+  actions.forEach((action) => {
+    hook.state = action(hook.state);
+  });
+
+  const setState = (action) => {
+    hook.queue.push(action);
+    wipRoot = {
+      dom: currentRoot.dom,
+      props: currentRoot.props,
+      alternate: currentRoot,
+    };
+    nextUnitOfWork = wipRoot;
+    deletions = [];
+  };
+
+  wipFiber.hooks.push(hook);
+  hookIndex++;
+
+  return [hook.state, setState];
 }
 
 function updateHostComponent(fiber: IFiber) {

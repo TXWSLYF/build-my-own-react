@@ -23,8 +23,23 @@ const element2 = (
   </div>
 );
 
-const Clock = ({ count }) => {
-  return <div>{count}</div>;
+const Clock = () => {
+  const [count1, setCount1] = Didact.useState(0);
+  const [count2, setCount2] = Didact.useState(0);
+  return (
+    <div
+      onClick={() => {
+        setCount1((count1) => count1 + 1);
+        console.log(count1)
+        setCount1((count1) => count1 + 1);
+        console.log(count1)
+        setCount2((count2) => count2 + 2);
+      }}
+    >
+      <p>{count1}</p>
+      <p>{count2}</p>
+    </div>
+  );
 };
 
 const app = document.getElementById("app");
@@ -36,5 +51,11 @@ if (app) {
   //   Didact.render(<Clock count={count}></Clock>, app);
   // }, 1000);
 
-  Didact.render(element1, app);
+  // Didact.render(element1, app);
+  Didact.render(
+    <div>
+      <Clock />
+    </div>,
+    app
+  );
 }
